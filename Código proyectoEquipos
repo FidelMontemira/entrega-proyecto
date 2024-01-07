@@ -1,0 +1,60 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/shm.h>
+#include <string.h>
+#include <ctype.h>
+#include <sys/wait.h>
+
+#define BUFFER_SIZE 256
+
+void toUpper(char *str) {
+    while (*str) {
+        *str = toupper((unsigned char)*str);
+        str++;
+    }
+}
+
+int main() {
+    int num_processes;
+
+    printf("Ingrese el número de procesos a crear: ");
+    scanf("%d", &num_processes);
+
+    for (int i = 0; i < num_processes; ++i) {
+        int shm_id;
+        char *shm_ptr;
+
+        
+        shm_id = shmget(IPC_PRIVATE, BUFFER_SIZE, IPC_CREAT | 0666);
+        if (shm_id == -1) {
+            perror("Error creando memoria compartida");
+            exit(EXIT_FAILURE);
+        }
+
+        
+        shm_ptr = shmat(shm_id, NULL, 0);
+        if (shm_ptr == (char *) -1) {
+            perror("Error asignando memoria compartida");
+            exit(EXIT_FAILURE);
+        }
+
+        
+        printf("Proceso %d: Ingrese una cadena: ", i+1);
+        scanf("%s", shm_ptr);
+
+        toUpper(shm_ptr);
+
+     
+        wait(NULL);
+
+        
+        printf("Proceso %d recibe: %s\n", i+1, shm_ptr);
+
+        
+        shmdt(shm_ptr);
+        shmctl(shm_id, IPC_RMID, NULL);
+    }
+
+    return 0;
+}
